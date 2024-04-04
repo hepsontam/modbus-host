@@ -74,8 +74,8 @@ void mb_port_timerInit(uint32_t baud)
 UART_HandleTypeDef *pUART[COM_UART_MAX];
 void USART_ValInit(void)
 {
+    pUART[COM1] = &huart1;  //按需指定串口序号
     pUART[COM2] = &huart2;
-    pUART[COM3] = &huart3;
 }
 
 UART_HandleTypeDef * mb_port_mbTrans_to_uart(uint8_t com_index)
