@@ -110,16 +110,13 @@ void mbh_timer3T5Isr(void);
  * 	@note	放在mcu的rx中断中调用
  *			
  */
-void mbh_uartRxIsr(void);
+void mbh_uartRxIsr(uint8_t com_index);
 /**
  * 	@brief  modbus主机串口接收中断处理
  * 	@return	none
  * 	@note	放在mcu的tx中断中调用
  *			
  */
-void mbh_uartTxIsr(void);
-
-void mbh_uartRxIsr(uint8_t com_index);
 void mbh_uartTxIsr(uint8_t com_index);
 
 #endif
