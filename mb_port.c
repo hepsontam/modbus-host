@@ -10,49 +10,7 @@
  */
 
 #include "mb_include.h"
-#include "tim.h"
-#include "usart.h"
-#include "gpio.h"
 
-#ifdef USE_HAL_DRIVER
-UART_HandleTypeDef *mb_port_mbTrans_to_uart(uint8_t com_index)
-{
-	switch (com_index)
-	{
-	case COM4:
-		#if (COM_UART_MAX >= 4)
-			return &huart4;
-		#else
-			return NULL;
-		#endif
-		break;
-
-	case COM3:
-		#if (COM_UART_MAX >= 3)
-			return &huart3;
-		#else
-			return NULL;
-		#endif
-		break;
-
-	case COM2:
-		#if (COM_UART_MAX >= 2)
-			return &huart2;
-		#else
-			return NULL;
-		#endif
-		break;
-
-	case COM1:
-		return &huart1;
-		break;
-
-	default:
-		return NULL;
-		break;
-	}
-}
-#endif
 
 #if (!CubeMX_Setting)
 void mb_port_uartInit(uint32_t baud, uint8_t parity)
@@ -105,12 +63,26 @@ void mb_port_timerInit(uint32_t baud)
 	}
 	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+	if (HAL_TIM_Base_Init(htim) != HAL_OK)
 	{
 		Error_Handler();
 	}
 }
 #endif
+
+// Example
+UART_HandleTypeDef *pUART[COM_UART_MAX];
+void USART_ValInit(void)
+{
+    pUART[COM2] = &huart2;
+    pUART[COM3] = &huart3;
+}
+
+UART_HandleTypeDef * mb_port_mbTrans_to_uart(uint8_t com_index)
+{
+    return (pUART[com_index]);
+}
+
 
 void mb_port_uartEnable(uint8_t com_index, uint8_t txen, uint8_t rxen)
 {
@@ -120,74 +92,33 @@ void mb_port_uartEnable(uint8_t com_index, uint8_t txen, uint8_t rxen)
 		#ifdef USE_HAL_DRIVER
 		if (txen)
 		{
-			__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
+			__HAL_UART_ENABLE_IT(pUART[com_index], UART_IT_TXE);
 		}
 		else
 		{
-			__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
+			__HAL_UART_DISABLE_IT(pUART[com_index], UART_IT_TXE);
 		}
 
 		if (rxen)
 		{
-			__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);
+			__HAL_UART_ENABLE_IT(pUART[com_index], UART_IT_RXNE);
 		}
 		else
 		{
-			__HAL_UART_DISABLE_IT(huart, UART_IT_RXNE);
+			__HAL_UART_DISABLE_IT(pUART[com_index], UART_IT_RXNE);
 		}
 		#else
 		#endif
 	}
 }
-void mb_port_putchar(USART_TypeDef *Instance, uint8_t ch)
+void mb_port_putchar(uint8_t com_index, uint8_t ch)
 {
-	Instance->DR = ch; // 直接操作寄存器比HAL封装的更高效
+	// Instance->DR = ch; // 直接操作寄存器比HAL封装的更高效
+	(pUART[com_index]->Instance)->DR = ch;
 }
 
-void mb_port_getchar(USART_TypeDef *Instance, uint8_t *ch)
+void mb_port_getchar(uint8_t com_index, uint8_t *ch)
 {
-	*ch = (uint8_t)(Instance->DR & (uint8_t)0x00FF);
+	// *ch = (uint8_t)(Instance->DR & (uint8_t)0x00FF);
+	*ch= (uint8_t)((pUART[com_index]->Instance)->DR & (uint8_t)0x00FF);
 }
-
-#if 0
-void mb_port_timerEnable()
-{
-	__HAL_TIM_DISABLE(&htim3);
-	__HAL_TIM_CLEAR_IT(&htim3,TIM_IT_UPDATE);                //清除中断位
-	__HAL_TIM_ENABLE_IT(&htim3,TIM_IT_UPDATE);                //使能中断位
-	__HAL_TIM_SET_COUNTER(&htim3,0);                           //设置定时器计数为0
-	__HAL_TIM_ENABLE(&htim3);                                 //使能定时器
-}
-
-void mb_port_timerDisable()
-{
-	__HAL_TIM_DISABLE(&htim3);
-	__HAL_TIM_SET_COUNTER(&htim3,0); 
-	__HAL_TIM_DISABLE_IT(&htim3,TIM_IT_UPDATE);
-	__HAL_TIM_CLEAR_IT(&htim3,TIM_IT_UPDATE);
-}
-
-//串口中断服务函数
-void USART1_IRQHandler()
-{
-	HAL_NVIC_ClearPendingIRQ(USART1_IRQn);
-	if((__HAL_UART_GET_FLAG(&huart1,UART_FLAG_RXNE)!=RESET))
-	{
-		__HAL_UART_CLEAR_FLAG(&huart1,UART_FLAG_RXNE);
-		mbh_uartRxIsr();
-	}
-	if((__HAL_UART_GET_FLAG(&huart1,UART_FLAG_TXE)!=RESET))
-	{
-		__HAL_UART_CLEAR_FLAG(&huart1,UART_FLAG_TXE);
-		mbh_uartTxIsr();
-	}
-}
-
-//定时器中断服务函数
-void TIM3_IRQHandler()
-{
-	__HAL_TIM_CLEAR_IT(&htim3,TIM_IT_UPDATE);
-	mbh_timer3T5Isr();
-}
-
-#endif

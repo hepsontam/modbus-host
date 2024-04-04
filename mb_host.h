@@ -12,11 +12,6 @@
 #ifndef __MB_HOST_H
 #define __MB_HOST_H
 
-#ifdef MB_HOST_GLOBAL
-#define MB_HOST_EXT
-#else
-#define MB_HOST_EXT extern
-#endif
 
 #include "mb_include.h"
 #include "string.h"
@@ -25,10 +20,11 @@
 #define MBH_RTU_MAX_SIZE	255	//最大不超过255
 #define MBH_ERR_MAX_TIMES	3
 #define MBH_REC_TIMEOUT		100  //单位3.5T
+#define COMMU_WAIT_MS	5  //简化延时处理，等待5ms
 
 typedef enum
 {
-	MBH_STATE_IDLE=0X00,
+	MBH_STATE_IDLE=0x0,
 	MBH_STATE_TX,
 	MBH_STATE_TX_END,
 	MBH_STATE_RX,
@@ -53,9 +49,24 @@ typedef struct
 	uint8_t rxTimeOut;					//接收时的超时计数
 	
 }MBH_TransInfo;
-MB_HOST_EXT MBH_TransInfo mbTrans[COM_UART_MAX];
+MBH_TransInfo mbTrans[COM_UART_MAX];
 
 
+void mbh_ValInit(void);
+/**
+ * 	@brief  获取MODBUS主机运行状态
+ *  @param	com_index:串口号，如COM1，COM2等
+ * 	@return	mb_host_state中状态
+ * 	@note
+ */
+uint8_t mbh_getState(uint8_t com_index);
+/**
+ * 	@brief  获取MODBUS主机运行状态
+ *  @param	com_index:串口号，如COM1，COM2等
+ * 	@return	当前指令的（起始）数据地址
+ * 	@note
+ */
+uint16_t mbh_getDataAddr(uint8_t com_index);
 /**
  * 	@brief  MODBUS主机初始化
  * 	@param	baud:串口波特率
@@ -74,14 +85,7 @@ void mbh_init(uint32_t baud, uint8_t parity);
  * 	@return	-1:发送失败	0:发送成功
  * 	@note	该函数为非阻塞式，调用后立即返回
  */
-int8_t mbh_send(MBH_TransInfo *mbHost, uint8_t add, uint8_t cmd, uint8_t *data, uint8_t data_len);
-/**
- * 	@brief  获取MODBUS主机运行状态
- *  @param	com_index:串口号，请自行规划，如COM1、COM2
- * 	@return	mb_host_state中状态
- * 	@note	
- */
-uint8_t mbh_getState(uint8_t com_index);
+int8_t mbh_send(uint8_t com_index, uint8_t add, uint8_t cmd, uint8_t *data, uint8_t data_len);
 /**
  * 	@brief  MODBUS状态轮训
  *  @param	mbHost:目标对象主机（句柄）
@@ -89,7 +93,7 @@ uint8_t mbh_getState(uint8_t com_index);
  * 	@note	该函数必须不断轮询，用来底层核心状态进行切换
  *			可在操作系统任务中运行，但应该尽可能短的延时间隔
  */
-void mbh_poll(MBH_TransInfo *mbHost);
+void mbh_poll(uint8_t com_index);
 
 #if 0
 /**
@@ -115,6 +119,8 @@ void mbh_uartRxIsr(void);
  */
 void mbh_uartTxIsr(void);
 
+void mbh_uartRxIsr(uint8_t com_index);
+void mbh_uartTxIsr(uint8_t com_index);
 
 #endif
 
